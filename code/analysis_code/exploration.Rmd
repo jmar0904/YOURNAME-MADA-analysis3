@@ -1,0 +1,94 @@
+---
+title: "Exploration"
+author: "Joe Martin"
+date: "10/14/2021"
+output: html_document
+---
+
+```{r load, echo=FALSE}
+pacman::p_load(pacman,tidyverse,here)
+
+data_load <- here::here("data", "processed_data", "processeddata.rds")
+df <- read_rds(data_load)
+
+summary(df)
+```
+
+My first step in this analysis is to identify the most important variables so I can produce relevant numerical outputs. Most of the variables present in this dataset are binary, describing the presence of a symptom in a patient. There are three variables (Weakness,CoughIntensity,and Myalgia) with four factor levels and one variable (BodyTemp) with continuous numerical data. The goal of this analysis is to create statistical models with tidymodels. 
+
+For the purposes of selecting significant variables, I'll begin  by examining the significance between BodyTemp and Weakness, CoughIntensity, and Myalgia using regression analysis. I'll then examine bit variables with high positivity rates. For example, more than  6 out of 7 patients responded Yes to having Weakness, Cough, Myalgia, Headache, and Pharyngitis. 
+
+I began by testing body temperature against Weakness, CoughIntensity and Myalgia. In this statistical summary, we can see that there is a p-value of about .02, meaning there are no strong correlations between any of these variables and BodyTemp. A Weakness rating of WeaknessSevere had the strongest correlation compared to the rest.
+```{r summary1}
+temp_lm1 <- lm(BodyTemp ~ Weakness + CoughIntensity + Myalgia, data = df)
+summary(temp_lm1)
+```
+
+Testing BodyTemp against Weakness, it becomes more clear that there is significance between body temperature and severe weakness (p-value of .0022).
+```{r temp_weak}
+temp_weak <- lm(BodyTemp ~ Weakness, data = df)
+summary(temp_weak)
+
+```
+
+I'll repeat this process for the bit variables. In this model, the p-value is .0074, meaning at least one of the relationships is significant. This read-out suggests the greatest significance is between BodyTemp and Pharyngitis.
+```{r summary2}
+temp_lm2 <- lm(BodyTemp ~ WeaknessYN + CoughYN2 + MyalgiaYN + Headache + Pharyngitis, data = df)
+summary(temp_lm2)
+```
+
+Upon further examination, we see that the p-value for a regression with BodyTemp and Pharyngitis is .0182.
+```{r temp_phar}
+temp_phar <- lm(BodyTemp ~ Pharyngitis, data = df)
+summary(temp_phar)
+```
+
+I'll complete my analysis by testing remaining bit variables against BodyTemp and seeing if there is any significance. In this regression, the highest significance is between BodyTemp and SubjectiveFever and BodyTemp and Sneeze. BodyTemp and Fatigue also seems significant. 
+```{r remainder}
+remainder <- lm(BodyTemp ~ SwollenLymphNodes + ChestCongestion + ChillsSweats + NasalCongestion + Sneeze  +  Fatigue +  SubjectiveFever  + RunnyNose + AbPain +    ChestPain + Diarrhea + EyePn + Insomnia + ItchyEye + Nausea + EarPn + Hearing + Breathless + ToothPn + Vision + Vomit + Wheeze, data = df)
+summary(remainder)  
+```  
+
+p-value of .000000002329
+```{r temp_fever}
+temp_fever <- lm(BodyTemp ~ SubjectiveFever, data = df)
+summary(temp_fever)
+```
+
+p-value of .0000006037
+```{r temp_sneeze}
+temp_sneeze <- lm(BodyTemp ~ Sneeze, data = df)
+summary(temp_sneeze)
+```
+
+p-value of .0144
+```{r Fatigue}
+Fatigue <- lm(BodyTemp ~ Fatigue, data = df)
+summary(Fatigue)
+```
+
+
+In the next step of this analysis, I'll create a histogram for body temperature.
+
+```{r body_temp_hist}
+#For each (important) continuous variable, create a histogram or density plot.
+body_temp_hist <- df %>% ggplot(aes(x=BodyTemp))+
+  geom_histogram()+
+  theme_classic()
+body_temp_hist
+```
+
+```{r}
+#Create scatterplots or boxplots or similar such plots for the variable you decided is your main outcome of interest and the most important (or all depending on number of variables) independent variables/predictors. For this dataset, you can pick and choose a few predictor variables.
+
+
+
+```
+
+
+
+If applicable to your data, make some pairwise correlation plots. (Not applicable here)
+
+If needed for your data, explore the pattern of missing values. (Not applicable here)
+
+Any other exploration steps that might be useful.
