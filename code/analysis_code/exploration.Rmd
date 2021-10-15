@@ -53,13 +53,13 @@ remainder <- lm(BodyTemp ~ SwollenLymphNodes + ChestCongestion + ChillsSweats + 
 summary(remainder)  
 ```  
 
-p-value of .000000002329
+p-value of .00000002329
 ```{r temp_fever}
 temp_fever <- lm(BodyTemp ~ SubjectiveFever, data = df)
 summary(temp_fever)
 ```
 
-p-value of .0000006037
+p-value of .000006037
 ```{r temp_sneeze}
 temp_sneeze <- lm(BodyTemp ~ Sneeze, data = df)
 summary(temp_sneeze)
@@ -135,4 +135,4 @@ fatigue_boxplot <- df %>% ggplot(aes(x=BodyTemp, y = Fatigue))+
 fatigue_boxplot
 ```
 
-Through this exploration, there is a clear visual guide showing the strong relationship between body temperature and weakness. While the graphical representation for the relationship between body temperature and sneezing is less obvious in showing a relationship, the p-value is still one of the highest of all the variables tested. Similarly, the relationship between body temperature and perceived body temperature is strong. Given the obvious nature of this relationship, this variable will come secondary in modeling. The primary variable I will test is Sneezing. 
+Through this exploration, there is a clear visual guide showing the strong relationship between body temperature and weakness. While the graphical representation for the relationship between body temperature and sneezing is less obvious in showing a relationship, the p-value is still one of the highest of all the variables tested. Similarly, the relationship between body temperature and perceived fever is strong. Given the obvious nature of this relationship, this variable will come secondary in modeling. The primary variable I will test is Sneezing. 
