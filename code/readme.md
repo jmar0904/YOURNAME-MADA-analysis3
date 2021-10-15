@@ -1,10 +1,7 @@
-Place your various R or Rmd scripts in the appropriate folders.
+See readme in data folder to learn more about data processing and data use in this repository. 
 
-You can either have fewer large scripts, or multiple scripts that do only specific actions. Those can be R scripts or Rmd files. In either case, document the scripts and what goes on in them so well that someone else (including future you) can easily figure out what is happening.
+Data comes from paper "Virulence-mediated infectiousness and activity trade-offs and their impact on transmission potential of patients infected with influenza" and can be found at https://datadryad.org/stash/dataset/doi:10.5061/dryad.51c59zw4v.
 
-The scripts should load the appropriate data (e.g. raw or processed), perform actions, and save results (e.g. processed data, figures, computed values) in the appropriate folders. Document somewhere what inputs each script takes and where output is placed. 
+Code in processing_code folder takes raw dataset from this study, removes scores that were calculated for the purpose of this study and leaves a total of 32 variabls. One variable is continuous, three variables contain factors that range from "None", to "Mild", "Moderate", and "Severe". All remaining variables contain bit data. Variables in this dataset describe presence of symptoms reported by patients at University Health Center. 
 
-If scripts need to be run in a specific order, document this. Either as comments in the script, or in a separate text file such as this. Ideally of course in both locations.
-
-
-Depending on your specific project, you might want to have further sub-folders.
+The analysis of this data begins with the exploration.Rmd file, which analyzes the relationships between variables in search for a particular variable of interest. The final variable of interest is determined to be Sneeze, which is then reviewed further with statistical modeling in model_fitting.Rmd. Both R Markdown files produce PDF files.

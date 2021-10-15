@@ -1,0 +1,129 @@
+---
+title: "Model Fitting"
+author: "Joe Martin"
+date: "10/14/2021"
+output: pdf_document
+---
+
+```{r load, echo=FALSE, warning=FALSE, message=FALSE,error=FALSE}
+pacman::p_load(pacman,tidyverse,here,readr, broom.mixed, dotwhisker)
+
+library(tidymodels)
+
+data <- here::here("data","processed_data","processeddata.rds")
+df <- read_rds(data)
+```
+
+## Introduction
+
+To begin modeling the Sneeze variable, I'm adding the boxplot and regression read-out from my exploration:
+``` {r sneeze_boxplot}
+sneeze_boxplot <- df %>% ggplot(aes(x=BodyTemp, y = Sneeze))+
+  geom_violin()+
+  geom_boxplot(width = .2)+
+  theme_bw()
+sneeze_boxplot
+```
+
+p-value of .0000006037
+```{r temp_sneeze}
+temp_sneeze <- lm(BodyTemp ~ Sneeze, data = df)
+summary(temp_sneeze)
+```
+
+## Models
+
+### Linear Regression
+
+I'll begin running this as a linear regression. This is not the preferred regression to use here because the variable of interest is categorical. However, this will provide an approximate estimate of probability. The code below generates summary stats for this regression.
+
+```{r}
+# Fits a linear model to the continuous outcome using only the main predictor of interest.
+lm_mod <- linear_reg() %>%
+  set_engine("lm")
+
+lm_fit <- lm_mod %>%
+  fit(BodyTemp ~ Sneeze, data = df)
+
+lm_fit
+
+tidy(lm_fit)
+
+```
+
+Now I'll plot Sneezing alongside other interesting variables, like Weakness and SubjectiveFever. I can review these results and compare models for each variable with summary stats, as well as a dot-and-whisker plot.  
+
+```{r}
+# Fits another linear model to the continuous outcome using all (important) predictors of interest.
+lm_fit_more <- 
+  lm_mod %>%
+  fit(BodyTemp ~ Weakness + Sneeze + SubjectiveFever, data = df)
+
+lm_fit_more
+
+tidy(lm_fit_more)
+
+tidy(lm_fit_more) %>%
+  dwplot(dot_args = list(size = 2, color = "red"),
+         whisker_args = list(color = "black"),
+         vline = geom_vline(xintercept = 0, color = "grey50", linetype = 2))
+
+```
+
+Next, I'll use glance to view compare the output between the target variable (Sneeze) and the secondary variables I selected.
+
+```{r}
+# Compares the model results for the model with just the main predictor and all predictors.
+glance(lm_fit)
+```
+
+```{r}
+glance(lm_fit_more)
+```
+
+### Logistic Regression
+
+A logistic model will likely be a better choice in this case because the Sneeze variable has values of Yes and No. According to ISLR, logistic models will predict the probability that a variable belongs to a certain category. I'll start by viewing summary statistics again.
+
+```{r}
+# Fits a logistic model to the categorical outcome using only the main predictor of interest.
+log_mod <- logistic_reg() %>%
+  set_engine("glm")
+
+log_fit <- 
+  lm_mod %>%
+  fit(BodyTemp ~ Sneeze, data = df)
+```
+
+```{r}
+log_fit
+```
+
+```{r}
+tidy(log_fit)
+```
+
+Finally, I'll compare the target variable, Sneeze, with the other variables of interest. I'll do this with a summary statistics table, as well as a dot-and-whisker plot.
+
+```{r}
+# Fits another logistic model to the categorical outcome using all (important) predictors of interest.
+log_fit_more <- 
+  log_mod %>%
+  fit(Sneeze ~ BodyTemp + Weakness + SubjectiveFever, data = df)
+
+log_fit_more
+```
+
+```{r}
+tidy(log_fit_more)
+```
+
+```{r}
+tidy(log_fit_more) %>%
+  dwplot(dot_args = list(size = 2, color = "red"),
+         whisker_args = list(color = "black"),
+         vline = geom_vline(xintercept = 0, color = "grey50", linetype = 2))
+
+```
+
+

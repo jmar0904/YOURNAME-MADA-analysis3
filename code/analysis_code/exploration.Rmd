@@ -2,7 +2,7 @@
 title: "Exploration"
 author: "Joe Martin"
 date: "10/14/2021"
-output: html_document
+output: pdf_document
 ---
 
 ```{r load, echo=FALSE}
@@ -10,7 +10,11 @@ pacman::p_load(pacman,tidyverse,here)
 
 data_load <- here::here("data", "processed_data", "processeddata.rds")
 df <- read_rds(data_load)
+```
 
+Begin with a summary of the processed dataset.
+
+```{r}
 summary(df)
 ```
 
@@ -24,7 +28,7 @@ temp_lm1 <- lm(BodyTemp ~ Weakness + CoughIntensity + Myalgia, data = df)
 summary(temp_lm1)
 ```
 
-Testing BodyTemp against Weakness, it becomes more clear that there is significance between body temperature and severe weakness (p-value of .0022).
+Testing BodyTemp against Weakness, it becomes more clear that there is significance between body temperature and severe weakness (p-value of .0086).
 ```{r temp_weak}
 temp_weak <- lm(BodyTemp ~ Weakness, data = df)
 summary(temp_weak)
@@ -68,27 +72,67 @@ summary(Fatigue)
 ```
 
 
-In the next step of this analysis, I'll create a histogram for body temperature.
+The following histogram shows the range of body temperatures patients have when they present to the University Health Center with a complaint related to a respiratory infection. Values highlighted within the green area represent an approximate normal temperature, adjusting for natural variation. 
 
 ```{r body_temp_hist}
 #For each (important) continuous variable, create a histogram or density plot.
 body_temp_hist <- df %>% ggplot(aes(x=BodyTemp))+
-  geom_histogram()+
-  theme_classic()
+  geom_rect(mapping=aes(xmin = 97, xmax = 99, ymin = -Inf, ymax = Inf), fill="#4f9900", alpha=.01, inherit.aes = FALSE)+
+  geom_histogram(fill = "#00538a")+
+  theme_bw()+
+  scale_x_continuous(breaks = c(97:103))+
+  labs(title = "Distribution of Patient Body Temperatures",subtitle= "Patients presenting to University Health Center with complaint of respiratory infection", x= "Body Temperature (°F)", y="Patients")
+  
 body_temp_hist
 ```
 
-```{r}
+The following series of boxplots are meant to demonstrate the relationship between the body temperature of University Health Center Patients and their responses to symptoms they reported. 
+```{r weakness_boxplot}
 #Create scatterplots or boxplots or similar such plots for the variable you decided is your main outcome of interest and the most important (or all depending on number of variables) independent variables/predictors. For this dataset, you can pick and choose a few predictor variables.
 
-
+weakness_boxplot <- df %>% ggplot(aes(x=BodyTemp, y = Weakness))+
+  geom_violin()+
+  geom_boxplot(width = .2)+
+  theme_bw()+
+  labs(x= "Body Temperature (°F)")
+weakness_boxplot
 
 ```
 
+``` {r phar_boxplot}
+phar_boxplot <- df %>% ggplot(aes(x=BodyTemp, y = Pharyngitis))+
+  geom_violin()+
+  geom_boxplot(width = .2)+
+  theme_bw()+
+  labs(x= "Body Temperature (°F)")
+phar_boxplot
+```
 
+``` {r fever_boxplot}
+fever_boxplot <- df %>% ggplot(aes(x=BodyTemp, y = SubjectiveFever))+
+  geom_violin()+
+  geom_boxplot(width = .2)+
+  theme_bw()+
+  labs(x= "Body Temperature (°F)")
+fever_boxplot
+```
 
-If applicable to your data, make some pairwise correlation plots. (Not applicable here)
+``` {r sneeze_boxplot}
+sneeze_boxplot <- df %>% ggplot(aes(x=BodyTemp, y = Sneeze))+
+  geom_violin()+
+  geom_boxplot(width = .2)+
+  theme_bw()+
+  labs(x= "Body Temperature (°F)")
+sneeze_boxplot
+```
 
-If needed for your data, explore the pattern of missing values. (Not applicable here)
+``` {r fatigue_boxplot}
+fatigue_boxplot <- df %>% ggplot(aes(x=BodyTemp, y = Fatigue))+
+  geom_violin()+
+  geom_boxplot(width = .2)+
+  theme_bw()+
+  labs(x= "Body Temperature (°F)")
+fatigue_boxplot
+```
 
-Any other exploration steps that might be useful.
+Through this exploration, there is a clear visual guide showing the strong relationship between body temperature and weakness. While the graphical representation for the relationship between body temperature and sneezing is less obvious in showing a relationship, the p-value is still one of the highest of all the variables tested. Similarly, the relationship between body temperature and perceived body temperature is strong. Given the obvious nature of this relationship, this variable will come secondary in modeling. The primary variable I will test is Sneezing. 
