@@ -47,9 +47,9 @@ temp_phar <- lm(BodyTemp ~ Pharyngitis, data = df)
 summary(temp_phar)
 ```
 
-I'll complete my analysis by testing remaining bit variables against BodyTemp and seeing if there is any significance. In this regression, the highest significance is between BodyTemp and SubjectiveFever and BodyTemp and Sneeze. BodyTemp and Fatigue also seems significant. 
+I'll complete my analysis by testing all variables against BodyTemp and seeing if there is any significance. In this regression, the highest significance is between BodyTemp and SubjectiveFever and BodyTemp and Sneeze. 
 ```{r remainder}
-remainder <- lm(BodyTemp ~ SwollenLymphNodes + ChestCongestion + ChillsSweats + NasalCongestion + Sneeze  +  Fatigue +  SubjectiveFever  + RunnyNose + AbPain +    ChestPain + Diarrhea + EyePn + Insomnia + ItchyEye + Nausea + EarPn + Hearing + Breathless + ToothPn + Vision + Vomit + Wheeze, data = df)
+remainder <- lm(BodyTemp ~ ., data = df)
 summary(remainder)  
 ```  
 
@@ -63,12 +63,6 @@ p-value of .000006037
 ```{r temp_sneeze}
 temp_sneeze <- lm(BodyTemp ~ Sneeze, data = df)
 summary(temp_sneeze)
-```
-
-p-value of .0144
-```{r Fatigue}
-Fatigue <- lm(BodyTemp ~ Fatigue, data = df)
-summary(Fatigue)
 ```
 
 

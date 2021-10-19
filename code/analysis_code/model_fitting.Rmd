@@ -16,6 +16,8 @@ df <- read_rds(data)
 
 ## Introduction
 
+Presence of sneezing is the main predictor variable and has the strongest relationship to the continuous outcome variable, BodyTemp
+
 To begin modeling the Sneeze variable, I'm adding the boxplot and regression read-out from my exploration:
 ``` {r sneeze_boxplot}
 sneeze_boxplot <- df %>% ggplot(aes(x=BodyTemp, y = Sneeze))+
@@ -35,7 +37,7 @@ summary(temp_sneeze)
 
 ### Linear Regression
 
-I'll begin running this as a linear regression. This is not the preferred regression to use here because the variable of interest is categorical. However, this will provide an approximate estimate of probability. The code below generates summary stats for this regression.
+I'll begin running this as a linear regression. This is not the preferred regression to use here because the variable of interest is categorical. However, this will provide an approximate estimate of probability. The code below generates summary stats for this regression. 
 
 ```{r}
 # Fits a linear model to the continuous outcome using only the main predictor of interest.
@@ -51,13 +53,13 @@ tidy(lm_fit)
 
 ```
 
-Now I'll plot Sneezing alongside other interesting variables, like Weakness and SubjectiveFever. I can review these results and compare models for each variable with summary stats, as well as a dot-and-whisker plot.  
+Now I'll model all variables with BodyTemp. I can review these results and compare models for each variable with summary stats, as well as a dot-and-whisker plot.  
 
 ```{r}
 # Fits another linear model to the continuous outcome using all (important) predictors of interest.
 lm_fit_more <- 
   lm_mod %>%
-  fit(BodyTemp ~ Weakness + Sneeze + SubjectiveFever, data = df)
+  fit(BodyTemp ~ ., data = df)
 
 lm_fit_more
 
@@ -83,7 +85,7 @@ glance(lm_fit_more)
 
 ### Logistic Regression
 
-A logistic model will likely be a better choice in this case because the Sneeze variable has values of Yes and No. According to ISLR, logistic models will predict the probability that a variable belongs to a certain category. I'll start by viewing summary statistics again.
+A logistic model will likely be a better choice in this case because the Sneeze variable has values of Yes and No. I'll start by viewing summary statistics again. This time, the outcome is Sneeze (categorical) and the predictor of interest is BodyTemp (continuous). 
 
 ```{r}
 # Fits a logistic model to the categorical outcome using only the main predictor of interest.
@@ -91,8 +93,8 @@ log_mod <- logistic_reg() %>%
   set_engine("glm")
 
 log_fit <- 
-  lm_mod %>%
-  fit(BodyTemp ~ Sneeze, data = df)
+  log_mod %>%
+  fit(Sneeze ~ BodyTemp, data = df)
 ```
 
 ```{r}
@@ -109,7 +111,7 @@ Finally, I'll compare the target variable, Sneeze, with the other variables of i
 # Fits another logistic model to the categorical outcome using all (important) predictors of interest.
 log_fit_more <- 
   log_mod %>%
-  fit(Sneeze ~ BodyTemp + Weakness + SubjectiveFever, data = df)
+  fit(Sneeze ~ ., data = df)
 
 log_fit_more
 ```

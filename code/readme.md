@@ -4,4 +4,7 @@ Data comes from paper "Virulence-mediated infectiousness and activity trade-offs
 
 Code in processing_code folder takes raw dataset from this study, removes scores that were calculated for the purpose of this study and leaves a total of 32 variabls. One variable is continuous, three variables contain factors that range from "None", to "Mild", "Moderate", and "Severe". All remaining variables contain bit data. Variables in this dataset describe presence of symptoms reported by patients at University Health Center. 
 
-The analysis of this data begins with the exploration.Rmd file, which analyzes the relationships between variables in search for a particular variable of interest. The final variable of interest is determined to be Sneeze, which is then reviewed further with statistical modeling in model_fitting.Rmd. Both R Markdown files produce PDF files.
+The analysis of this data begins with the exploration.Rmd file, which analyzes the relationships between variables in search for a particular variable of interest. The final variable of interest is determined to be Sneeze, which is then reviewed further with statistical modeling in model_fitting.Rmd. Both R Markdown files produce PDF files.\
+
+*exploration.R was updated 10/19/2021 to fix issues with models
+*model_fitting.Rmd was updated 10/19/2021 to fix issues with models (had some linear regression code where logistic regression was supposed to be)
