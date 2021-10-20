@@ -6,7 +6,7 @@ output: pdf_document
 ---
 ## Introduction
 
-The goal of this section is to determine whether it is possible to predict a high temperature based on other symptoms a patient is displaying. High Temperature (Yes = 1, No = 0), is the outcome of interest. This is first tested with all present variables as predictors, then tested against the main predictor of interest, Sneeze.
+The goal of this section is to determine whether it is possible to predict nausea based on other symptoms a patient is displaying.  This is first tested with all present variables as predictors, then tested against the main predictor of interest, Runny Nose.
 
 ```{r load, echo = FALSE}
 pacman::p_load(pacman, tidyverse, tidymodels, here, readr, broom.mixed, skimr, rsample)
@@ -18,12 +18,12 @@ df <- read_rds(data)
 ```{r}
 # Write code that takes the data and splits it randomly into a train and test that, following for instance the example in the Data Splitting section of the Get Started tidymodels tutorial.
 
+# I messed this part up and created a new Body Temp variable. This is unnecessary, but I'm leaving it.
+
 set.seed(2)
 
 df$high_temp <- ifelse(df$BodyTemp > 99, "high_temp","normal_range")
 df$high_temp <- factor(df$high_temp)
-
-df <- df %>% select(-BodyTemp)
 
 # Use 70/30 split on data
 
@@ -39,8 +39,8 @@ The following code generates recipes for the training and test sets of data, the
 ```{r}
 # Next, following the example in the Create Recipes section of the Get Started tidymodels tutorial, create a simple recipe that fits our categorical outcome of interest to all predictors (we’ll start with categorical and all predictors since that’s the closest to the shown example). For now, you can ignore the concept of roles and features they mention.
 
-ht_rec <- recipe(high_temp ~ ., data = train_data)
-ht_test <- recipe(high_temp ~ ., data = test_data)
+nausea_rec <- recipe(Nausea ~ ., data = train_data)
+nausea_test <- recipe(Nausea ~ ., data = test_data)
 
 #summary(ht_rec)
 ```
@@ -50,106 +50,101 @@ Set up logistic model and create workflow
 lr_model <- logistic_reg() %>%
   set_engine("glm")
 
-ht_workflow <- 
+nausea_workflow <- 
   workflow() %>%
   add_model(lr_model) %>%
-  add_recipe(ht_rec)
-
-ht_workflow
+  add_recipe(nausea_rec)
 ```
 
 Show relationships between predictor variables and outcome 
 ```{r}
-ht_fit <- ht_workflow %>%
+nausea_fit <- nausea_workflow %>%
   fit(data = train_data)
 
-ht_fit %>%
+nausea_fit %>%
   extract_fit_parsnip() %>%
   tidy()
 ```
-The following code predicts whether a patient has a high temperature based on the model built above.
+The following code predicts whether a patient has nausea based on the model built above.
 ```{r results='hide'}
-# use predict to predict if patient has a high temperature
-predict(ht_fit, test_data)
+# use predict to predict if patient has nausea
+predict(nausea_fit, test_data)
 ```
 
 The following code shows the model's predictions for the test data set
 ```{r}
-ht_aug <- augment(ht_fit, test_data)
+nausea_aug <- augment(nausea_fit, test_data)
 
-ht_aug %>% select(high_temp, .pred_class, .pred_high_temp, .pred_normal_range)
+nausea_aug %>% select(Nausea, .pred_class, .pred_Yes, .pred_No)
 ```
 
-The results of the ROC curve the the ROC-AUC value of .62 show the model is able to predict high temperature, but is not ideal. 
+The results of the ROC curve the the ROC-AUC value of .29 show the model not ideal for predicting nausea. 
 
 ```{r}
 #Follow the example in the Use a trained workflow to predict section of the tutorial to look at the predictions, ROC and ROC-AUC for your data. Apply it to both the training and the test data. ROC and ROC-AUC is another common performance measure/metric for categorical outcomes. If you are not familiar with it, you can read more about them by following the link in the tutorial. It’s not too important to go into the details for now. The focus here is on getting the code to work. In general, a ROC-AUC of 0.5 means the model is no good, 1 is a perfect model. Generally, somewhere above 0.7 do people think the model might be useful.
 
-ht_aug %>%
-  roc_curve(truth = high_temp, .pred_high_temp) %>%
+nausea_aug %>%
+  roc_curve(truth = Nausea, .pred_Yes) %>%
   autoplot()
 ```
 
 ```{r}
-ht_aug %>% 
-  roc_auc(truth = high_temp, .pred_high_temp)
+nausea_aug %>% 
+  roc_auc(truth = Nausea, .pred_Yes)
 ```
 
 ## Testing the Main Predictor
-### Sneeze
+### Runny Nose
 
-The predictor found to have one of the strongest relationships to body temperature is the presence of sneezing as a symptom. The following model will test whether sneezing can predict a high temperature. 
+The following model will test whether having a runny nose is a good predictor of nausea. Based on the results testing all variables as predictors of nausea, it is unlikely that having a runny nose will predict nausea (p-value of .699).
 ```{r}
 #Let’s re-do the fitting but now with a model that only fits the main predictor to the categorical outcome. You should notice that the only thing you have to change is to set up a new recipe, this time one that only has the name of the predictor of interest on the right side of the formula (instead of the . symbol, which is shorthand notation for “all predictors”.) Then you can set up a new workflow with the new recipe, rerun the fit and evaluate performance using the same code as above. In general, if you do multiple models/recipes, you might want to write a loop to go over them, or parallelize/vectorize things. For now, just copying and pasting most of the code is ok.
 
 # Create new recipes
-sneeze_rec <- recipe(high_temp ~ Sneeze, data = train_data)
-sneeze_test <- recipe(high_temp ~ Sneeze, data = test_data)
+RunnyNose_rec <- recipe(Nausea ~ RunnyNose, data = train_data)
+RunnyNose_test <- recipe(Nausea ~ RunnyNose, data = test_data)
 ```
 
 ```{r}
-sneeze_workflow <- 
+RunnyNose_workflow <- 
   workflow() %>%
   add_model(lr_model) %>%
-  add_recipe(sneeze_rec)
-
-sneeze_workflow
+  add_recipe(RunnyNose_rec)
 ```
 
 ```{r}
-sneeze_fit <- sneeze_workflow %>%
+RunnyNose_fit <- RunnyNose_workflow %>%
   fit(data = train_data)
 ```
 
-Once again, the p-values suggest that sneezing has a strong association with a high body temperature. 
 
 ```{r}
-sneeze_fit %>%
+RunnyNose_fit %>%
   extract_fit_parsnip() %>%
   tidy()
 ```
 
 ```{r results = 'hide'}
 # use predict to predict if patient has a high temperature
-predict(sneeze_fit, test_data)
+predict(RunnyNose_fit, test_data)
 ```
 
 ```{r}
-sneeze_aug <- augment(sneeze_fit, test_data)
+RunnyNose_aug <- augment(RunnyNose_fit, test_data)
 
-sneeze_aug %>% select(high_temp, .pred_class, .pred_high_temp, .pred_normal_range)
+RunnyNose_aug %>% select(Nausea, .pred_class, .pred_Yes, .pred_No)
 ```
 
-Although the p-values suggest a strong relationship, the ROC curve and ROC-AUC value (.56), while significant, show this model is not especially strong for predicting whether a patient has a high body temperature.
+Once again, the ROC curve and ROC-AUC value (.48) indicate that RunnyNose is not a good predictor for Nausea. 
 
 ```{r}
-sneeze_aug %>%
-  roc_curve(truth = high_temp, .pred_high_temp) %>%
+RunnyNose_aug %>%
+  roc_curve(truth = Nausea, .pred_Yes) %>%
   autoplot()
 ```
 
 ```{r}
-sneeze_aug %>% 
-  roc_auc(truth = high_temp, .pred_high_temp)
+RunnyNose_aug %>% 
+  roc_auc(truth = Nausea, .pred_Yes)
 ```
 
