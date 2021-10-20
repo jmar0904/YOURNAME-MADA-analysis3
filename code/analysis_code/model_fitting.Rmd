@@ -6,7 +6,7 @@ output: pdf_document
 ---
 
 ```{r load, echo=FALSE, warning=FALSE, message=FALSE,error=FALSE}
-pacman::p_load(pacman,tidyverse,here,readr, broom.mixed, dotwhisker)
+pacman::p_load(pacman,tidyverse, here, readr, broom.mixed, dotwhisker)
 
 library(tidymodels)
 
@@ -16,20 +16,20 @@ df <- read_rds(data)
 
 ## Introduction
 
-Presence of sneezing is the main predictor variable and has the strongest relationship to the continuous outcome variable, BodyTemp
+Presence of Runny Nose is the main predictor variable. Body Temperature is the main continuous variable. Nausea is the main categorical variable. 
 
-To begin modeling the Sneeze variable, I'm adding the boxplot and regression read-out from my exploration:
+To begin modeling the RunnyNose variable, I'm adding the boxplot and regression read-out from my exploration:
 ``` {r sneeze_boxplot}
-sneeze_boxplot <- df %>% ggplot(aes(x=BodyTemp, y = Sneeze))+
+rn_boxplot <- df %>% ggplot(aes(x=BodyTemp, y = RunnyNose))+
   geom_violin()+
   geom_boxplot(width = .2)+
   theme_bw()
-sneeze_boxplot
+rn_boxplot
 ```
 
-p-value of .0000006037
+p-value of .00268
 ```{r temp_sneeze}
-temp_sneeze <- lm(BodyTemp ~ Sneeze, data = df)
+temp_sneeze <- lm(BodyTemp ~ RunnyNose, data = df)
 summary(temp_sneeze)
 ```
 
@@ -45,7 +45,7 @@ lm_mod <- linear_reg() %>%
   set_engine("lm")
 
 lm_fit <- lm_mod %>%
-  fit(BodyTemp ~ Sneeze, data = df)
+  fit(BodyTemp ~ RunnyNose, data = df)
 
 lm_fit
 
@@ -72,7 +72,7 @@ tidy(lm_fit_more) %>%
 
 ```
 
-Next, I'll use glance to view compare the output between the target variable (Sneeze) and the secondary variables I selected.
+Next, use the glance function to compare the output between the target variable (RunnyNose) and all other variables. Comparing p-values, it is clear that using all variables is a more robust way to predict body temperature.
 
 ```{r}
 # Compares the model results for the model with just the main predictor and all predictors.
@@ -85,7 +85,7 @@ glance(lm_fit_more)
 
 ### Logistic Regression
 
-A logistic model will likely be a better choice in this case because the Sneeze variable has values of Yes and No. I'll start by viewing summary statistics again. This time, the outcome is Sneeze (categorical) and the predictor of interest is BodyTemp (continuous). 
+This logistic regression model will test the relationship between Nausea, the main outcome of interest, and Runny Nose, the predictor of interest.
 
 ```{r}
 # Fits a logistic model to the categorical outcome using only the main predictor of interest.
@@ -94,7 +94,7 @@ log_mod <- logistic_reg() %>%
 
 log_fit <- 
   log_mod %>%
-  fit(Sneeze ~ BodyTemp, data = df)
+  fit(Nausea ~ RunnyNose, data = df)
 ```
 
 ```{r}
@@ -105,18 +105,16 @@ log_fit
 tidy(log_fit)
 ```
 
-Finally, I'll compare the target variable, Sneeze, with the other variables of interest. I'll do this with a summary statistics table, as well as a dot-and-whisker plot.
+The p-value in this logistic regression is .77, so this isn't a significant relationship.
+
+Finally, I'll compare the target variable, Nausea, with the other variables of interest.
 
 ```{r}
 # Fits another logistic model to the categorical outcome using all (important) predictors of interest.
 log_fit_more <- 
   log_mod %>%
-  fit(Sneeze ~ ., data = df)
+  fit(Nausea ~ ., data = df)
 
-log_fit_more
-```
-
-```{r}
 tidy(log_fit_more)
 ```
 
@@ -127,5 +125,10 @@ tidy(log_fit_more) %>%
          vline = geom_vline(xintercept = 0, color = "grey50", linetype = 2))
 
 ```
+```{r}
+glance(log_fit)
+```
 
-
+```{r}
+glance(log_fit_more)
+```
