@@ -148,3 +148,154 @@ RunnyNose_aug %>%
   roc_auc(truth = Nausea, .pred_Yes)
 ```
 
+
+## Analysis Part 2
+
+The goal of this section is to fit the continuous outcome of interest (BodyTemp) to a linear.  This is first tested with all present variables as predictors, then tested against the main predictor of interest, Runny Nose. Since the previous section already used the `Tidymodels` infrastructure, we can copy and paste a majority of the code, adjusting the outcome of interest and model type.
+
+We can use the already loaded df, with the same test_data and train_data df.
+
+## Testing All Predictors
+
+The following code generates recipes for the training data set, then builds a workflow to fit to a linear model to all predictor variables. 
+
+```{r}
+# Next, following the example in the Create Recipes section of the Get Started tidymodels tutorial, create a simple recipe that fits our continuous outcome of interest to all predictors and ignore the concept of roles and features they mention.
+
+bodytemp_rec <- recipe(BodyTemp ~ ., data = train_data)
+```
+
+Set up linear model and create workflow for training data
+```{r}
+linear_model <- linear_reg() %>%
+                  set_engine("lm")
+
+bodytemp_workflow <- 
+  workflow() %>%
+  add_model(linear_model) %>%
+  add_recipe(bodytemp_rec)
+```
+
+Show relationships between predictor variables and outcome 
+```{r}
+bodytemp_fit <- bodytemp_workflow %>%
+  fit(data = train_data)
+
+bodytemp_fit %>%
+  extract_fit_parsnip() %>%
+  tidy()
+```
+
+The following code predicts a patient's body temperature based on the model built above for the training data set.
+```{r}
+# use predict to predict patient body temperature
+predict(bodytemp_fit, train_data)
+
+#create df with model predictions and actual measures
+bodytemp_aug_train <- augment(bodytemp_fit, train_data)
+
+bodytemp_all_train <- bodytemp_aug_train %>%
+                        mutate(data = "train",
+                               model = "all")
+```
+
+The following code predicts a patient's body temperature based on the model built above for the test data set.
+```{r}
+# use predict to predict patient body temperature
+predict(bodytemp_fit, test_data)
+
+#create df with model predictions and actual measures
+bodytemp_aug_test <- augment(bodytemp_fit, test_data)
+
+#fit into df for yardstick evaluation later
+bodytemp_all_test <- bodytemp_aug_test %>%
+                        mutate(data = "test",
+                               model = "all")
+```
+
+## Testing Only Runny Nose
+
+The following code generates recipes for the training data set, then builds a workflow to fit to a linear model to only the runny nose predictor variable. 
+
+```{r}
+# Next, following the example in the Create Recipes section of the Get Started tidymodels tutorial, create a simple recipe that fits our continuous outcome of interest to runny nose and ignore the concept of roles and features they mention.
+
+bodytemp_rec_RN <- recipe(BodyTemp ~ RunnyNose, data = train_data)
+```
+
+Create workflow for RunnyNose (We can use the previously defined model)
+```{r}
+bodytemp_workflow_RN <- 
+        workflow() %>%
+        add_model(linear_model) %>%
+        add_recipe(bodytemp_rec_RN)
+```
+
+Show relationships between predictor variable and outcome 
+```{r}
+bodytemp_fit_RN <- bodytemp_workflow_RN %>%
+  fit(data = train_data)
+
+bodytemp_fit_RN %>%
+  extract_fit_parsnip() %>%
+  tidy()
+```
+
+The following code predicts a patient's body temperature based on the model built above for the training data set.
+```{r}
+# use predict to predict patient body temperature
+predict(bodytemp_fit_RN, train_data)
+
+#create df with model predictions and actual measures
+bodytemp_aug_train_RN <- augment(bodytemp_fit_RN, train_data)
+
+bodytemp_RN_train <- bodytemp_aug_train_RN %>%
+                        mutate(data = "train",
+                               model = "RN")
+```
+
+The following code predicts a patient's body temperature based on the model built above for the test data set.
+```{r}
+# use predict to predict patient body temperature
+predict(bodytemp_fit_RN, test_data)
+
+#create df with model predictions and actual measures
+bodytemp_aug_test_RN <- augment(bodytemp_fit_RN, test_data)
+
+#fit into df for yardstick evaluation later
+bodytemp_RN_test <- bodytemp_aug_test_RN %>%
+                        mutate(data = "test",
+                               model = "RN")
+```
+
+
+## Linear Model Evaluation
+
+As this is now a linear regression model, we need to use RMSE instead of ROC as the metric. We can combine the predictions into one df and then calculate the RMSE for each model to compare. Inspiration for the coding for this section comes from the [TidyModels Yardstick Website](https://yardstick.tidymodels.org/)
+
+```{r}
+#First create comprehensive df with all of the predictions
+bodytemp_preds <- bind_rows(bodytemp_all_test,
+                            bodytemp_all_train,
+                            bodytemp_RN_test,
+                            bodytemp_RN_train)
+
+#Use the yardstick package to calculate the metrics on resamples
+bodytemp_metrics <- bodytemp_preds %>%
+                      dplyr::group_by(data, model) %>%
+                      yardstick::metrics(truth = BodyTemp, estimate = .pred)
+#for interpretation: rmse = Root Mean Squared Error (RMSE), rsq = R^2, mae = Mean Absolute Error (MAE)
+
+#make a df that just displays RMSE for each model and data (all dplyr functions)
+bodytemp_RMSE <- bodytemp_metrics %>%
+                    filter(.metric == "rmse") %>%
+                    select(-.estimator)
+
+#sort the df to make it more understandable
+bodytemp_RMSE[order( bodytemp_RMSE[, 4, 2] ), ]
+```
+
+<br>
+
+Interpreting the Results:
+RMSE is the standard deviation of the unexplained variance, and has the same units as BodyTemp. A lower RMSE indicates a better fit. Based on the results above, we can conclude that the model that uses all of the predictors is a better fit than the model that only uses RunnyNose as the predictor. Interestingly, in the RN model, the test dataset had a lower RMSE than the training dataset, whereas in the all model, the training dataset had a lower RMSE than the test dataset.
