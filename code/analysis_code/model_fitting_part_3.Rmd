@@ -5,13 +5,17 @@ date: "10/31/2021"
 output: html_document
 ---
 
-```{r}
+```{r echo = FALSE}
 # Create a Linear Regression with the target variable BodyTemp
 pacman::p_load(pacman,tidymodels,tidyverse,here, rpart, glmnet, ranger, rpart.plot)
 
 #load Mod 11 data
 df <- read_rds(here::here("data","processed_data", "processeddata_mod11.rds"))
+```
 
+
+Create model linear regression model. Train and test sets will have a 70/30 split. In this section, create the cross-fold validation object. 5 folds repeated 5 times. Data sets for split and folds will be stratified on BodyTemp variable.
+```{r}
 set.seed(123)
 
 # Set up for Linear Regression
@@ -45,6 +49,7 @@ bt_fit %>%
   tidy()
 ```
 
+Evaluate model performance
 ```{r}
 # Check the model performance
 
@@ -65,6 +70,7 @@ bt_error_rmse <- bind_rows(bt_error_train, bt_error_test)
 bt_error_rmse
 ```
 
+Create a null model to compare the linear regression model. 
 ```{r}
 # Create a null model
 null_rec <- recipe(BodyTemp ~ 1, data = training_df) %>% 
@@ -83,6 +89,7 @@ null_fit %>%
   tidy()
 ```
 
+Evaluate model performance.
 ```{r}
 # Check Null Model performance
 predict(null_fit, testing_df)
@@ -105,20 +112,8 @@ null_error_rmse <- bind_rows(null_error_train,null_error_test)
 null_error_rmse
 ```
 
-```{r}
-# Resample with cross-fold validation
-
-# five x five cross-folds
-re_btwf <-
-  workflow() %>%
-  add_model(lm_mod) %>%
-  add_recipe(bt_train_rec)%>%
-  fit_resamples(folds)
-
-collect_metrics(re_btwf)
-```
-
-```{r}
+Create a decision tree. Use the same data sets for training and the same cross-fold validation object.
+```{r warning = FALSE, error = FALSE, message= FALSE}
 # decision tree
 # continue using training_df and testing_df for data sets
 
@@ -146,35 +141,26 @@ tree_res <- tree_wf %>%
   )
 
 tree_res %>%
-  collec_metrics()
-
-tree_res %>% autoplot()
+  collect_metrics()
 ```
 
-```{r}
-# plot tree
-tree_res %>%
-  collect_metrics() %>%
-  mutate(tree_depth = factor(tree_depth)) %>%
-  ggplot(aes(cost_complexity, mean, color = tree_depth)) +
-  geom_line(size = 1.5, alpha = 0.6) +
-  geom_point(size = 2) +
-  facet_wrap(~ .metric, scales = "free", nrow = 2) +
-  scale_x_log10(labels = scales::label_number()) +
-  scale_color_viridis_d(option = "plasma", begin = .9, end = 0)
-```
-
+Evaluate for the best model. The best-performing model has RMSE of 1.187.
 ```{r}
 tree_res %>%
   show_best("rmse")
 
+# autoplot tree_res. This will show what happened during the tuning process.
+tree_res %>% autoplot()
+
 best_tree <- tree_res %>%
   select_best("rmse")
 
+#finalize workflow
 final_wf <- tree_wf %>%
   finalize_workflow(best_tree)
 final_wf
 
+# final fit - MADA instructions say with training data, but function requires split data
 final_fit <- 
   final_wf %>%
   last_fit(df_split)
@@ -188,8 +174,14 @@ final_fit %>%
 
 final_tree <- extract_workflow(final_fit)
 final_tree
+
+# plot tree with rpart.plot
+final_tree %>%
+  extract_fit_engine() %>%
+  rpart.plot(roundint = FALSE)
 ```
 
+Create LASSO model
 ```{r}
 # LASSO
 # continue using same data split and linear regression model
@@ -208,17 +200,32 @@ lasso_res <- # this will throw a warning saying there are no tuning parameters
             grid = lasso_reg_grid,
             control = control_grid(save_pred = TRUE),
             metrics = metric_set(rmse))
-
 ```
 
+Evaluate Lasso model. The highest-performing model has RMSE of 1.199
 ```{r}
-top_models <- 
-  lasso_res %>%
+lasso_res %>%
   show_best("rmse")
 
-top_models
-```
+# select best
+lasso_best <- lasso_res %>%
+  select_best("rmse")
+lasso_best
 
+# finalize workflow
+final_lasso_wf <- 
+  lasso_wf %>% 
+  finalize_workflow(lasso_best)
+
+# final fit with split data
+final_lasso_fit <- final_lasso_wf %>%
+  last_fit(df_split)
+
+final_lasso_fit %>%
+  collect_metrics()
+
+```
+Create random forest using the same data sets and the same cross-validation object. 
 ```{r}
 # Forest
 # use same dataset and recipes
@@ -227,6 +234,7 @@ cores <- parallel::detectCores()
 cores
 ```
 
+Set the model engine. Leaving mtry and min_n eqult to tune() for now. Running the model this way will help evaluate how to tune the model using these parameters.
 ```{r}
 rf_mod <- rand_forest(mtry = tune(), min_n = tune(), trees = 1000) %>%
   set_engine("ranger", num.threads = cores) %>%
@@ -245,34 +253,54 @@ rf_res <- rf_wf %>%
             metrics = metric_set(rmse))
 ```
 
-
+Evaluate the random forest. The best-performing model has RMSE of 1.177.
 ```{r}
 rf_res %>%
   show_best(metric = "rmse")
 
+rf_res %>% 
+  collect_predictions()
+
+# autoplot to show how the model was tuned
 autoplot(rf_res)
 
+#select best
 rf_best <- 
   rf_res %>%
   select_best(metric = "rmse")
 rf_best
 
-rf_res %>% 
-  collect_predictions()
+#finalize workflow
+final_rf_wf <- 
+  rf_wf %>% 
+  finalize_workflow(rf_best)
+
+# final fit with split data
+final_fit_rf <- final_rf_wf %>%
+  last_fit(df_split)
+
+final_fit_rf %>%
+  collect_metrics()
 ```
+
+After completing the tree, LASSO, and random forest models, LASSO had the greatest RMSE (~1.2) and the random forest had the lowest RMSE (~1.77). Based on this alone the best model seems to be the random forest. It's also important to note that the random forest seems to be a much more robust approach than the other two. Given the high number of repetitions (1,000 trees), it would make sense that this model performs better than the others. The final part of this project will utilize test data to evaluate how the random forest model performs.
 
 ```{r}
+rf_last_mod <- 
+  rand_forest(mtry = 6,min_n = 28, trees = 1000) %>%
+  set_engine("ranger", num.threads = cores) %>%
+  set_mode("regression")
 
+rf_last_wf <- 
+  final_rf_wf %>%
+  update_model(rf_last_mod)
+
+# using split data again (can't specifically use test data)
+rf_last_fit <- 
+  rf_last_wf %>%
+  last_fit(df_split)
+
+collect_metrics(rf_last_fit)
 ```
 
-```{r}
-
-```
-
-```{r}
-
-```
-
-```{r}
-
-```
+The RMSE of the random forest model is 1.18, which is still among the best scores of all the models tried. This final test does show that the random forest seems to be the most robust model created, compared to the LASSO and the decision tree.

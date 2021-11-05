@@ -128,5 +128,3 @@ fatigue_boxplot <- df %>% ggplot(aes(x=BodyTemp, y = Fatigue))+
   labs(x= "Body Temperature (°F)")
 fatigue_boxplot
 ```
-
-Through this exploration, there is a clear visual guide showing the strong relationship between body temperature and weakness. While the graphical representation for the relationship between body temperature and sneezing is less obvious in showing a relationship, the p-value is still one of the highest of all the variables tested. Similarly, the relationship between body temperature and perceived fever is strong. Given the obvious nature of this relationship, this variable will come secondary in modeling. The primary variable I will test is Sneezing. 
