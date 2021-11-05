@@ -29,4 +29,25 @@ save_data_location <- here::here("data","processed_data","processeddata.rds")
 
 saveRDS(rawdata2, file = save_data_location)
 
+### Module 11 Updates
+# Remove binary variables for Weakness, Cough (x2), and Myalgia
+# Coerce factors for remaining Weakness, Cough, and Myalgia variables into ordinal - 1-None...4-Severe
 
+
+rawdata3 <- rawdata2 %>% select(-CoughYN,-CoughYN2,-WeaknessYN,-MyalgiaYN)
+
+# Check factor levels
+levels(rawdata3$Weakness)
+levels(rawdata3$CoughIntensity)
+levels(rawdata3$Myalgia)
+
+# Factors are ordered correctly
+
+# Find variables with fewer than 50 entries
+summary(rawdata3)
+
+# Hearing/Yes has 30 entries and Vision/Yes has 19. Remove Hearing and Vision
+rawdata3 <- rawdata3 %>% select(-Hearing, -Vision)
+
+# This is the data required to complete the Module 11 assignment. Save in Processed Data folder
+saveRDS(rawdata3, file=here::here("data","processed_data","processeddata_mod11.rds"))

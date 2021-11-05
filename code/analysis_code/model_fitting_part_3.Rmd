@@ -1,0 +1,278 @@
+---
+title: "Module 11 Exercise"
+author: "Joe Martin"
+date: "10/31/2021"
+output: html_document
+---
+
+```{r}
+# Create a Linear Regression with the target variable BodyTemp
+pacman::p_load(pacman,tidymodels,tidyverse,here, rpart, glmnet, ranger, rpart.plot)
+
+#load Mod 11 data
+df <- read_rds(here::here("data","processed_data", "processeddata_mod11.rds"))
+
+set.seed(123)
+
+# Set up for Linear Regression
+df_split <- initial_split(df, strata = BodyTemp, prop=7/10)
+
+training_df <- training(df_split)
+testing_df <- testing(df_split)
+
+#Set up for cross-fold validation
+folds <- vfold_cv(training_df, v = 5, repeats = 5, strata = BodyTemp)
+
+# create recipe
+bt_train_rec <- recipe(BodyTemp ~ ., data = training_df) %>%
+  step_dummy(all_nominal_predictors())
+
+# Use step_dummy to transform categorical variables into dummy variables
+
+lm_mod <- linear_reg() %>%
+  set_engine("lm")
+
+bt_workflow <- 
+  workflow() %>%
+  add_model(lm_mod) %>%
+  add_recipe(bt_train_rec)
+
+bt_fit <- bt_workflow %>%
+  fit(training_df)
+
+bt_fit %>%
+  extract_fit_parsnip() %>%
+  tidy()
+```
+
+```{r}
+# Check the model performance
+
+predict(bt_fit, testing_df)
+
+bt_aug_train <- augment(bt_fit, training_df)
+bt_aug_train %>% select(BodyTemp, .pred)
+bt_aug_test <- augment(bt_fit,testing_df)
+bt_aug_test %>% select(BodyTemp, .pred)
+
+bt_error_train <- bt_aug_train %>%
+  rmse(truth = BodyTemp, .pred)
+bt_error_train$model <- "BodyTemp Training"
+bt_error_test <- bt_aug_test %>%
+  rmse(truth = BodyTemp, .pred)
+bt_error_test$model <- "BodyTemp Test"
+bt_error_rmse <- bind_rows(bt_error_train, bt_error_test)
+bt_error_rmse
+```
+
+```{r}
+# Create a null model
+null_rec <- recipe(BodyTemp ~ 1, data = training_df) %>% 
+  step_dummy(all_nominal_predictors())
+
+null_wf <- 
+  workflow() %>%
+  add_model(lm_mod) %>%
+  add_recipe(null_rec)
+
+null_fit <- null_wf %>%
+  fit(training_df)
+
+null_fit %>%
+  extract_fit_parsnip() %>%
+  tidy()
+```
+
+```{r}
+# Check Null Model performance
+predict(null_fit, testing_df)
+
+null_aug_train <- augment(null_fit, training_df)
+null_aug_train %>% select(BodyTemp, .pred)
+null_aug_test <- augment(null_fit,testing_df)
+null_aug_test %>% select(BodyTemp, .pred)
+
+null_error_train <- null_aug_train %>%
+  rmse(truth = BodyTemp, .pred)
+null_error_train$model <- "Null Training Model"
+
+
+null_error_test <- null_aug_test %>%
+  rmse(truth = BodyTemp, .pred)
+null_error_test$model <- "Null Testing Model"
+
+null_error_rmse <- bind_rows(null_error_train,null_error_test)
+null_error_rmse
+```
+
+```{r}
+# Resample with cross-fold validation
+
+# five x five cross-folds
+re_btwf <-
+  workflow() %>%
+  add_model(lm_mod) %>%
+  add_recipe(bt_train_rec)%>%
+  fit_resamples(folds)
+
+collect_metrics(re_btwf)
+```
+
+```{r}
+# decision tree
+# continue using training_df and testing_df for data sets
+
+tune_spec <- decision_tree(
+  cost_complexity = tune(),
+  tree_depth = tune()
+  ) %>%
+  set_engine("rpart") %>%
+  set_mode("regression")
+
+tree_grid <- grid_regular(cost_complexity(),
+                          tree_depth(),
+                          levels = 5)
+
+# create tree workflow with bodytemp train recipe
+tree_wf <- workflow() %>%
+  add_model(tune_spec) %>%
+  add_recipe(bt_train_rec)
+
+# create tree with new workflow
+tree_res <- tree_wf %>%
+  tune_grid(
+    resamples = folds,
+    grid = tree_grid
+  )
+
+tree_res %>%
+  collec_metrics()
+
+tree_res %>% autoplot()
+```
+
+```{r}
+# plot tree
+tree_res %>%
+  collect_metrics() %>%
+  mutate(tree_depth = factor(tree_depth)) %>%
+  ggplot(aes(cost_complexity, mean, color = tree_depth)) +
+  geom_line(size = 1.5, alpha = 0.6) +
+  geom_point(size = 2) +
+  facet_wrap(~ .metric, scales = "free", nrow = 2) +
+  scale_x_log10(labels = scales::label_number()) +
+  scale_color_viridis_d(option = "plasma", begin = .9, end = 0)
+```
+
+```{r}
+tree_res %>%
+  show_best("rmse")
+
+best_tree <- tree_res %>%
+  select_best("rmse")
+
+final_wf <- tree_wf %>%
+  finalize_workflow(best_tree)
+final_wf
+
+final_fit <- 
+  final_wf %>%
+  last_fit(df_split)
+
+final_fit %>%
+  collect_metrics()
+
+final_fit %>%
+  collect_predictions() %>%
+  rmse(BodyTemp, .pred)
+
+final_tree <- extract_workflow(final_fit)
+final_tree
+```
+
+```{r}
+# LASSO
+# continue using same data split and linear regression model
+# continue using same bt_train_rec
+
+lasso_wf <- 
+  workflow() %>%
+  add_model(lm_mod) %>%
+  add_recipe(bt_train_rec)
+
+lasso_reg_grid <- tibble(penalty = 10^seq(-4, -1, length.out = 30))
+
+lasso_res <- # this will throw a warning saying there are no tuning parameters
+  lasso_wf %>%
+  tune_grid(folds,
+            grid = lasso_reg_grid,
+            control = control_grid(save_pred = TRUE),
+            metrics = metric_set(rmse))
+
+```
+
+```{r}
+top_models <- 
+  lasso_res %>%
+  show_best("rmse")
+
+top_models
+```
+
+```{r}
+# Forest
+# use same dataset and recipes
+# how many cores does my computer have?
+cores <- parallel::detectCores()
+cores
+```
+
+```{r}
+rf_mod <- rand_forest(mtry = tune(), min_n = tune(), trees = 1000) %>%
+  set_engine("ranger", num.threads = cores) %>%
+  set_mode("regression")
+
+rf_wf <- workflow() %>%
+  add_model(rf_mod) %>%
+  add_recipe(bt_train_rec)
+
+rf_mod %>% parameters()
+
+rf_res <- rf_wf %>%
+  tune_grid(folds,
+            grid = 25,
+            control = control_grid(save_pred = TRUE),
+            metrics = metric_set(rmse))
+```
+
+
+```{r}
+rf_res %>%
+  show_best(metric = "rmse")
+
+autoplot(rf_res)
+
+rf_best <- 
+  rf_res %>%
+  select_best(metric = "rmse")
+rf_best
+
+rf_res %>% 
+  collect_predictions()
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
